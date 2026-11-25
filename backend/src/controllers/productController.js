@@ -6,13 +6,14 @@ import { getAuthenticatedUserId } from "../middleware/auth.js";
 export async function listProducts(req, res) {
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
   const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 12));
-  const filter = { inStock: true };
+  const approvedStoreIds = await Store.find({ status: "approved", isActive: true }).distinct("_id");
+  const filter = { inStock: true, store: { $in: approvedStoreIds } };
 
   if (req.query.category) filter.category = String(req.query.category);
   if (req.query.search) filter.$text = { $search: String(req.query.search).slice(0, 100) };
 
   const [items, total] = await Promise.all([
-    Product.find(filter).populate("store", "name username").sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    Product.find(filter).populate("store", "name username logoUrl").sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
     Product.countDocuments(filter)
   ]);
 
@@ -27,8 +28,13 @@ export async function getProduct(req, res) {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(400).json({ success: false, message: "Invalid product ID" });
   }
-  const product = await Product.findById(req.params.id).populate("store", "name username").lean();
-  if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+  const product = await Product.findById(req.params.id)
+    .populate("store", "name username logoUrl status isActive")
+    .lean();
+
+  if (!product || product.store?.status !== "approved" || !product.store?.isActive || !product.inStock) {
+    return res.status(404).json({ success: false, message: "Product not found" });
+  }
   res.json({ success: true, data: product });
 }
 
