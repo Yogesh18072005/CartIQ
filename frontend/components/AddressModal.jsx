@@ -2,53 +2,82 @@
 import { XIcon } from "lucide-react"
 import { useState } from "react"
 import { toast } from "react-hot-toast"
+import { useAuth } from "@clerk/nextjs"
 
-const AddressModal = ({ setShowAddressModal }) => {
+const initialAddress = {
+    name: "",
+    email: "",
+    street: "",
+    city: "",
+    state: "",
+    zip: "",
+    country: "",
+    phone: ""
+}
 
-    const [address, setAddress] = useState({
-        name: '',
-        email: '',
-        street: '',
-        city: '',
-        state: '',
-        zip: '',
-        country: '',
-        phone: ''
-    })
+const AddressModal = ({ setShowAddressModal, onAddressSaved }) => {
+    const { getToken } = useAuth()
+    const [address, setAddress] = useState(initialAddress)
+    const [saving, setSaving] = useState(false)
+    const [error, setError] = useState("")
 
-    const handleAddressChange = (e) => {
-        setAddress({
-            ...address,
-            [e.target.name]: e.target.value
-        })
+    const handleAddressChange = (event) => {
+        setAddress(current => ({ ...current, [event.target.name]: event.target.value }))
     }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault()
+    const handleSubmit = async (event) => {
+        event.preventDefault()
+        setSaving(true)
+        setError("")
 
-        setShowAddressModal(false)
+        try {
+            const token = await getToken()
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+            const response = await fetch(`${apiBaseUrl}/api/addresses`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                body: JSON.stringify(address)
+            })
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.message || "Unable to save address.")
+            onAddressSaved?.(result.data)
+            toast.success("Address saved.")
+            setShowAddressModal(false)
+        } catch (submitError) {
+            setError(submitError.message)
+            toast.error(submitError.message)
+        } finally {
+            setSaving(false)
+        }
     }
 
     return (
-        <form onSubmit={e => toast.promise(handleSubmit(e), { loading: 'Adding Address...' })} className="fixed inset-0 z-50 bg-white/60 backdrop-blur h-screen flex items-center justify-center">
-            <div className="flex flex-col gap-5 text-slate-700 w-full max-w-sm mx-6">
-                <h2 className="text-3xl ">Add New <span className="font-semibold">Address</span></h2>
-                <input name="name" onChange={handleAddressChange} value={address.name} className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text" placeholder="Enter your name" required />
-                <input name="email" onChange={handleAddressChange} value={address.email} className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="email" placeholder="Email address" required />
-                <input name="street" onChange={handleAddressChange} value={address.street} className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text" placeholder="Street" required />
-                <div className="flex gap-4">
-                    <input name="city" onChange={handleAddressChange} value={address.city} className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text" placeholder="City" required />
-                    <input name="state" onChange={handleAddressChange} value={address.state} className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text" placeholder="State" required />
+        <div className="fixed inset-0 z-50 bg-white/60 backdrop-blur flex items-center justify-center p-4">
+            <form onSubmit={handleSubmit} className="relative flex max-h-[90vh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-xl bg-white p-6 text-slate-700 shadow-xl">
+                <button type="button" aria-label="Close address form" className="absolute right-4 top-4 text-slate-500" onClick={() => setShowAddressModal(false)}>
+                    <XIcon size={24} />
+                </button>
+                <h2 className="text-2xl">Add delivery address</h2>
+                {error && <p role="alert" className="rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>}
+                <input name="name" value={address.name} onChange={handleAddressChange} className="w-full rounded border border-slate-200 p-3" type="text" placeholder="Full name" required maxLength={100} />
+                <input name="email" value={address.email} onChange={handleAddressChange} className="w-full rounded border border-slate-200 p-3" type="email" placeholder="Email address" required />
+                <input name="street" value={address.street} onChange={handleAddressChange} className="w-full rounded border border-slate-200 p-3" type="text" placeholder="Street address" required />
+                <div className="grid grid-cols-2 gap-3">
+                    <input name="city" value={address.city} onChange={handleAddressChange} className="w-full rounded border border-slate-200 p-3" placeholder="City" required />
+                    <input name="state" value={address.state} onChange={handleAddressChange} className="w-full rounded border border-slate-200 p-3" placeholder="State" required />
+                    <input name="zip" value={address.zip} onChange={handleAddressChange} className="w-full rounded border border-slate-200 p-3" placeholder="Postal code" required />
+                    <input name="country" value={address.country} onChange={handleAddressChange} className="w-full rounded border border-slate-200 p-3" placeholder="Country" required />
                 </div>
-                <div className="flex gap-4">
-                    <input name="zip" onChange={handleAddressChange} value={address.zip} className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="number" placeholder="Zip code" required />
-                    <input name="country" onChange={handleAddressChange} value={address.country} className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text" placeholder="Country" required />
-                </div>
-                <input name="phone" onChange={handleAddressChange} value={address.phone} className="p-2 px-4 outline-none border border-slate-200 rounded w-full" type="text" placeholder="Phone" required />
-                <button className="bg-slate-800 text-white text-sm font-medium py-2.5 rounded-md hover:bg-slate-900 active:scale-95 transition-all">SAVE ADDRESS</button>
-            </div>
-            <XIcon size={30} className="absolute top-5 right-5 text-slate-500 hover:text-slate-700 cursor-pointer" onClick={() => setShowAddressModal(false)} />
-        </form>
+                <input name="phone" value={address.phone} onChange={handleAddressChange} className="w-full rounded border border-slate-200 p-3" type="tel" placeholder="Phone number" required />
+                <button disabled={saving} className="rounded bg-slate-800 py-3 text-sm font-medium text-white disabled:opacity-60">
+                    {saving ? "Saving..." : "Save address"}
+                </button>
+            </form>
+        </div>
     )
 }
 
