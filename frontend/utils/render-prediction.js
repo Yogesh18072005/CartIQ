@@ -1,88 +1,79 @@
 import { addToCart } from "@/lib/features/cart/cartSlice";
-import { Scissors } from "lucide-react";
 
-const ITEM_MAPPING = {
-  apple: "prod_1",
-  banana: "prod_2",
-  bottle: "prod_3",
-  book: "prod_4",
-  // ❌ removed person mapping
+const CLASS_MATCHERS = {
+  apple: /apple/i,
+  banana: /banana/i,
+  bottle: /bottle|beverage|drink|water/i,
+  book: /book|notebook/i
 };
 
-// Track products already added & cooldown timers
 const detectedItems = new Set();
-const cooldownTimers = {};
-const COOLDOWN_TIME = 3000; // 3 seconds cooldown per product
+const cooldownTimers = new Map();
+const COOLDOWN_TIME = 3000;
 
-// 🔊 Beep sound function
 function playBeep() {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const oscillator = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioContext = new AudioContextClass();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
 
-  oscillator.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-
-  oscillator.type = "sine";
-  oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-  gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-
-  oscillator.start();
-  oscillator.stop(audioCtx.currentTime + 0.2);
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    gainNode.gain.setValueAtTime(0.08, audioContext.currentTime);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.12);
+    oscillator.onended = () => audioContext.close().catch(() => {});
+  } catch {
+    // Audio feedback is optional; detection and cart updates must still work.
+  }
 }
 
-export function renderPredictions(predictions, ctx, dispatch) {
+export function renderPredictions(predictions, ctx, dispatch, products = []) {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-  const font = "16px sans-serif";
-  ctx.font = font;
+  ctx.font = "16px sans-serif";
   ctx.textBaseline = "top";
 
-  const detectedInFrame = new Set();
+  const detectedProductIds = new Set();
 
   predictions.forEach((prediction) => {
     const [x, y, width, height] = prediction.bbox;
     const className = prediction.class;
-    const productId = ITEM_MAPPING[className];
+    const matcher = CLASS_MATCHERS[className];
+    const product = matcher
+      ? products.find(item => matcher.test(item.name || "") && item.inStock !== false)
+      : undefined;
 
-    // ✅ Only add valid mapped products
-    if (productId) {
-      detectedInFrame.add(productId);
-    }
+    if (product?.id) detectedProductIds.add(product.id);
 
-    // 🎯 Draw bounding box
-    ctx.strokeStyle = productId ? "#FF0000" : "#00FFFF";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = product ? "#16A34A" : "#00FFFF";
+    ctx.lineWidth = 3;
     ctx.strokeRect(x, y, width, height);
 
-    // Label background
-    ctx.fillStyle = productId ? "#FF0000" : "#00FFFF";
-    const textWidth = ctx.measureText(className).width;
-    const textHeight = parseInt(font, 10);
-    ctx.fillRect(x, y, textWidth + 4, textHeight + 4);
-
-    // Label text
+    const label = product ? `${className}: ${product.name}` : className;
+    const textWidth = ctx.measureText(label).width;
+    ctx.fillStyle = product ? "#16A34A" : "#00FFFF";
+    ctx.fillRect(x, y, textWidth + 8, 22);
     ctx.fillStyle = "#000000";
-    ctx.fillText(className, x, y);
+    ctx.fillText(label, x + 4, y + 3);
   });
 
-  // 🛒 Add detected products
-  detectedInFrame.forEach((productId) => {
-    if (!detectedItems.has(productId) && typeof dispatch === "function") {
-      dispatch(addToCart({ productId }));
-      detectedItems.add(productId);
+  detectedProductIds.forEach((productId) => {
+    if (detectedItems.has(productId) || typeof dispatch !== "function") return;
 
-      console.log(`✅ Product '${productId}' added to cart!`);
+    dispatch(addToCart({ productId }));
+    detectedItems.add(productId);
+    playBeep();
 
-      // 🔊 Beep
-      playBeep();
+    const existingTimer = cooldownTimers.get(productId);
+    if (existingTimer) clearTimeout(existingTimer);
 
-      // Cooldown
-      if (cooldownTimers[productId]) clearTimeout(cooldownTimers[productId]);
-      cooldownTimers[productId] = setTimeout(() => {
-        detectedItems.delete(productId);
-        console.log(`⏱ Product '${productId}' ready again.`);
-      }, COOLDOWN_TIME);
-    }
+    cooldownTimers.set(productId, setTimeout(() => {
+      detectedItems.delete(productId);
+      cooldownTimers.delete(productId);
+    }, COOLDOWN_TIME));
   });
 }
