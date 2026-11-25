@@ -1,86 +1,110 @@
 'use client'
-import React, { useEffect, useRef, useState } from "react";
-import Webcam from "react-webcam";
-import { load as cocoSSDLoad } from "@tensorflow-models/coco-ssd";
-import * as tf from "@tensorflow/tfjs";
-import { useDispatch } from "react-redux";
-import { useRouter } from "next/navigation";
-import { renderPredictions } from "@/utils/render-prediction";
 
-let detectInterval;
+import { useEffect, useRef, useState } from "react";
+import Webcam from "react-webcam";
+import { load as loadCocoSSD } from "@tensorflow-models/coco-ssd";
+import { useDispatch } from "react-redux";
+import { renderPredictions } from "@/utils/render-prediction";
 
 export default function ObjectDetection() {
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
+  const detectionInProgress = useRef(false);
   const dispatch = useDispatch();
-  const router = useRouter();
-
-  async function runCoco() {
-    setIsLoading(true);
-    const net = await cocoSSDLoad();
-    setIsLoading(false);
-
-    detectInterval = setInterval(() => {
-      runObjectDetection(net);
-    }, 100); // slightly slower interval for performance
-  }
-
-  async function runObjectDetection(net) {
-    if (
-      canvasRef.current &&
-      webcamRef.current !== null &&
-      webcamRef.current.video?.readyState === 4
-    ) {
-      const video = webcamRef.current.video;
-      canvasRef.current.width = video.videoWidth;
-      canvasRef.current.height = video.videoHeight;
-
-      const detectedObjects = await net.detect(video, undefined, 0.6);
-      const context = canvasRef.current.getContext("2d");
-
-      renderPredictions(detectedObjects, context, dispatch, router);
-    }
-  }
-
-  const showMyVideo = () => {
-    if (
-      webcamRef.current !== null &&
-      webcamRef.current.video?.readyState === 4
-    ) {
-      const video = webcamRef.current.video;
-      video.width = video.videoWidth;
-      video.height = video.videoHeight;
-    }
-  };
 
   useEffect(() => {
-    runCoco();
-    showMyVideo();
-    return () => clearInterval(detectInterval);
-  }, []);
+    let isActive = true;
+    let intervalId;
+    let model;
+
+    async function startDetection() {
+      try {
+        model = await loadCocoSSD();
+
+        if (!isActive) return;
+        setIsLoading(false);
+
+        intervalId = window.setInterval(async () => {
+          const video = webcamRef.current?.video;
+          const canvas = canvasRef.current;
+
+          if (
+            !isActive ||
+            detectionInProgress.current ||
+            !video ||
+            video.readyState !== 4 ||
+            !canvas
+          ) {
+            return;
+          }
+
+          detectionInProgress.current = true;
+
+          try {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            const predictions = await model.detect(video, undefined, 0.6);
+            if (isActive) {
+              const context = canvas.getContext("2d");
+              if (context) renderPredictions(predictions, context, dispatch);
+            }
+          } catch {
+            if (isActive) {
+              setError("Item detection stopped unexpectedly. Please refresh and try again.");
+            }
+          } finally {
+            detectionInProgress.current = false;
+          }
+        }, 250);
+      } catch {
+        if (isActive) {
+          setError("The object-detection model could not be loaded. Check your connection and refresh the page.");
+          setIsLoading(false);
+        }
+      }
+    }
+
+    startDetection();
+
+    return () => {
+      isActive = false;
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [dispatch]);
+
+  if (error) {
+    return (
+      <div role="alert" className="p-4 text-center text-sm text-red-700">
+        {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col w-full h-full">
+    <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-gray-200">
       {isLoading ? (
-        <div className="gradient-text text-center text-lg font-medium">
-          Loading Model...
-        </div>
+        <p className="text-center text-sm font-medium text-slate-700">
+          Loading item-recognition model…
+        </p>
       ) : (
-        <div className="relative flex-1 w-full rounded-lg shadow-lg overflow-hidden flex justify-center items-center bg-gray-200">
-          {/* Webcam feed fills parent */}
+        <>
           <Webcam
             ref={webcamRef}
-            className="w-full h-full object-cover"
-            muted
-            videoConstraints={{ facingMode: "environment" }}
+            audio={false}
+            mirrored={false}
+            className="h-full w-full object-cover"
+            videoConstraints={{ facingMode: { ideal: "environment" } }}
+            onUserMediaError={() => setError("Camera access is unavailable. Allow camera permission in your browser and refresh.")}
           />
-          {/* Canvas overlays on webcam */}
           <canvas
             ref={canvasRef}
-            className="absolute top-0 left-0 w-full h-full"
+            aria-label="Live item detection results"
+            className="pointer-events-none absolute inset-0 h-full w-full"
           />
-        </div>
+        </>
       )}
     </div>
   );
