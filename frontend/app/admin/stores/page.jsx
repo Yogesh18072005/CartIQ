@@ -1,59 +1,77 @@
 'use client'
-import { storesDummyData } from "@/assets/assets"
+import { useAuth } from "@clerk/nextjs"
 import StoreInfo from "@/components/admin/StoreInfo"
 import Loading from "@/components/Loading"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
 
 export default function AdminStores() {
-
+    const { getToken, isLoaded, isSignedIn } = useAuth()
     const [stores, setStores] = useState([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState("")
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
-    const fetchStores = async () => {
-        setStores(storesDummyData)
-        setLoading(false)
-    }
-
-    const toggleIsActive = async (storeId) => {
-        // Logic to toggle the status of a store
-
-    }
+    const fetchStores = useCallback(async signal => {
+        const token = await getToken()
+        const response = await fetch(`${apiBaseUrl}/api/admin/stores?status=approved`, {
+            signal,
+            headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.message || "Unable to load approved stores.")
+        setStores(result.data || [])
+    }, [apiBaseUrl, getToken])
 
     useEffect(() => {
-        fetchStores()
-    }, [])
+        if (!isLoaded) return
+        if (!isSignedIn) {
+            setLoading(false)
+            return
+        }
+        const controller = new AbortController()
+        fetchStores(controller.signal)
+            .catch(loadError => { if (loadError.name !== "AbortError") setError(loadError.message) })
+            .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+        return () => controller.abort()
+    }, [isLoaded, isSignedIn, fetchStores])
 
-    return !loading ? (
-        <div className="text-slate-500 mb-28">
-            <h1 className="text-2xl">Live <span className="text-slate-800 font-medium">Stores</span></h1>
+    const toggleIsActive = async store => {
+        const token = await getToken()
+        const response = await fetch(`${apiBaseUrl}/api/admin/stores/${store._id}/active`, {
+            method: "PATCH",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                Accept: "application/json"
+            },
+            body: JSON.stringify({ isActive: !store.isActive })
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.message || "Store status could not be changed.")
+        setStores(current => current.map(item => item._id === store._id ? result.data : item))
+        toast.success("Store status updated.")
+    }
 
-            {stores.length ? (
-                <div className="flex flex-col gap-4 mt-4">
-                    {stores.map((store) => (
-                        <div key={store.id} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 flex max-md:flex-col gap-4 md:items-end max-w-4xl" >
-                            {/* Store Info */}
-                            <StoreInfo store={store} />
+    if (!isLoaded || loading) return <Loading />
 
-                            {/* Actions */}
-                            <div className="flex items-center gap-3 pt-2 flex-wrap">
-                                <p>Active</p>
-                                <label className="relative inline-flex items-center cursor-pointer text-gray-900">
-                                    <input type="checkbox" className="sr-only peer" onChange={() => toast.promise(toggleIsActive(store.id), { loading: "Updating data..." })} checked={store.isActive} />
-                                    <div className="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:bg-green-600 transition-colors duration-200"></div>
-                                    <span className="dot absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-transform duration-200 ease-in-out peer-checked:translate-x-4"></span>
-                                </label>
-                            </div>
-                        </div>
-                    ))}
-
-                </div>
-            ) : (
-                <div className="flex items-center justify-center h-80">
-                    <h1 className="text-3xl text-slate-400 font-medium">No stores Available</h1>
-                </div>
-            )
-            }
+    return (
+        <div className="mb-28 text-slate-500">
+            <h1 className="text-2xl">Approved <span className="font-medium text-slate-800">Stores</span></h1>
+            {!isSignedIn && <p className="mt-4">Sign in with an administrator account.</p>}
+            {error && <p role="alert" className="mt-4 rounded bg-red-50 p-3 text-red-700">{error}</p>}
+            {isSignedIn && !error && stores.length === 0 && <p className="mt-8">No approved stores found.</p>}
+            <div className="mt-4 flex max-w-4xl flex-col gap-4">
+                {stores.map(store => (
+                    <div key={store._id} className="flex max-w-4xl flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 md:flex-row md:items-end">
+                        <StoreInfo store={store} />
+                        <label className="flex items-center gap-3 text-sm">
+                            Active
+                            <input type="checkbox" checked={store.isActive} onChange={() => toast.promise(toggleIsActive(store), { loading: "Updating…" })} />
+                        </label>
+                    </div>
+                ))}
+            </div>
         </div>
-    ) : <Loading />
+    )
 }
