@@ -6,7 +6,8 @@ const orderItemSchema = new mongoose.Schema({
   name: { type: String, required: true },
   image: { type: String, default: "" },
   quantity: { type: Number, required: true, min: 1 },
-  unitPrice: { type: Number, required: true, min: 0 }
+  unitPrice: { type: Number, required: true, min: 0 },
+  storeStatus: { type: String, enum: ["ORDER_PLACED", "PROCESSING", "SHIPPED", "DELIVERED"], default: "ORDER_PLACED" }
 }, { _id: false });
 
 const orderSchema = new mongoose.Schema({
