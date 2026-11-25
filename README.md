@@ -21,9 +21,12 @@ The repository is being migrated from its original PostgreSQL/Prisma starter str
 - MongoDB-backed product listing, product detail, and seller product CRUD APIs
 - Clerk-protected store application submission
 - Public approved-store storefront API
-- Admin-only store approval endpoint guarded by a Clerk user ID allow-list
+- Admin-only store approval and activation endpoints guarded by a Clerk user ID allow-list
+- Admin store review screens connected to the protected API
 - Customer address creation and retrieval
 - Cash-on-delivery order creation and customer order history API
+- Seller order listing and per-store fulfillment status updates
+- Seller product creation, listing, and stock-availability controls
 - Cart checkout and order-history pages connected to the backend
 - Optional local demo-data seed command
 - Camera-based object detection mapped to current MongoDB product IDs
@@ -34,7 +37,7 @@ The repository is being migrated from its original PostgreSQL/Prisma starter str
 
 - Stripe or other online payment integration (currently COD only)
 - Stock quantity management and transactional order inventory updates
-- Seller/admin dashboard metrics and order management connected to MongoDB
+- Seller/admin dashboard metrics connected to MongoDB
 - Product image upload and managed storage
 - Ratings and reviews API
 - Full end-to-end testing with MongoDB, Clerk, and browser camera permissions
