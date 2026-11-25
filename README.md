@@ -12,23 +12,35 @@ CartIQ is a multi-vendor e-commerce application prototype with product discovery
 - **Validation and security:** Zod, Helmet, CORS allow-listing, rate limiting
 - **Camera-based recognition:** TensorFlow.js, COCO-SSD, React Webcam
 
-The repository is being migrated from its original PostgreSQL/Prisma starter structure to a MERN architecture. The active commerce API uses MongoDB/Mongoose. The old Prisma schema is retained temporarily as a migration reference and is not used by the new Express API.
+The repository is being migrated from its original PostgreSQL/Prisma starter structure to a MERN architecture. The active commerce API uses MongoDB/Mongoose. The old Prisma schema is retained temporarily as a migration reference and is not used by the Express API.
 
-## Current implementation
+## Implemented so far
 
-- Customer storefront and product browsing UI
+- Customer storefront and product browsing UI connected to the Express product API
 - Redux cart state and quantity controls
-- MongoDB-backed product listing and product detail API
+- MongoDB-backed product listing, product detail, and seller product CRUD APIs
 - Clerk-protected store application submission
 - Public approved-store storefront API
-- Product create, update, and delete API restricted to the owner's approved store
 - Admin-only store approval endpoint guarded by a Clerk user ID allow-list
+- Customer address creation and retrieval
+- Cash-on-delivery order creation and customer order history API
+- Cart checkout and order-history pages connected to the backend
 - Optional local demo-data seed command
-- Browser camera component using COCO-SSD object detection
+- Camera-based object detection mapped to current MongoDB product IDs
 - Backend request validation and API security middleware
 - GitHub Actions backend validation tests
 
-**Still in progress:** order persistence and checkout, payment integration, address and coupon APIs, full seller/admin dashboard data integration, image upload/storage, and end-to-end verification. Do not describe these as production-ready features until implemented and tested.
+## Still in progress / not production-ready
+
+- Stripe or other online payment integration (currently COD only)
+- Stock quantity management and transactional order inventory updates
+- Seller/admin dashboard metrics and order management connected to MongoDB
+- Product image upload and managed storage
+- Ratings and reviews API
+- Full end-to-end testing with MongoDB, Clerk, and browser camera permissions
+- Deployment configuration and production environment verification
+
+Do not describe unfinished workflows as production-ready.
 
 ## Repository layout
 
@@ -53,13 +65,9 @@ CartIQ/
 
 ## Run locally
 
-Use two terminals.
+Use two terminals and have MongoDB running locally or through Atlas.
 
-### 1. Start MongoDB
-
-Use a local MongoDB service or a MongoDB Atlas database. Keep the connection string private.
-
-### 2. Start the backend
+### 1. Backend
 
 ```powershell
 cd backend
@@ -67,7 +75,7 @@ npm install
 Copy-Item .env.example .env
 ```
 
-Set `MONGODB_URI`, `FRONTEND_URL`, and both Clerk keys in `backend/.env`. To use the admin approval endpoint, add your own Clerk user ID to `ADMIN_CLERK_USER_IDS`. Never commit this file or share credentials.
+Set `MONGODB_URI`, `FRONTEND_URL`, and both Clerk keys in `backend/.env`. To enable store approval, add your own Clerk user ID to `ADMIN_CLERK_USER_IDS`. Keep all secret values private and never commit `.env`.
 
 ```powershell
 npm run dev
@@ -79,9 +87,9 @@ Optional local demonstration data:
 npm run seed:demo
 ```
 
-### 3. Start the frontend
+### 2. Frontend
 
-In a second terminal:
+In a second PowerShell terminal:
 
 ```powershell
 cd frontend
@@ -90,7 +98,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Set the Clerk frontend publishable key and the backend API URL in `frontend/.env.local`. Open [http://localhost:3000](http://localhost:3000).
+Set the Clerk frontend publishable key and `NEXT_PUBLIC_API_URL=http://localhost:5000` in `frontend/.env.local`. Open [http://localhost:3000](http://localhost:3000).
 
 ## Tests
 
@@ -100,7 +108,7 @@ From `backend/`:
 npm test
 ```
 
-The GitHub Actions workflow runs the backend validation tests on relevant pushes and pull requests. A passing validation workflow does not replace live MongoDB, Clerk, browser, or checkout testing.
+GitHub Actions runs backend validation tests on relevant pushes and pull requests. A passing CI run does not replace live MongoDB, Clerk, browser, or checkout testing.
 
 ## Attribution
 
