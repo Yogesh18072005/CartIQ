@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { productSchema } from "../src/validators/product.js";
+import { productSchema, productUpdateSchema } from "../src/validators/product.js";
 
 const validProduct = {
   name: "Fresh apples",
@@ -27,6 +27,11 @@ test("rejects negative prices", () => {
 });
 
 test("accepts a partial update without requiring every field", () => {
-  const result = productSchema.partial().safeParse({ name: "Updated apples" });
+  const result = productUpdateSchema.safeParse({ name: "Updated apples" });
   assert.equal(result.success, true);
+});
+
+test("rejects a partial update that sets price above the supplied MRP", () => {
+  const result = productUpdateSchema.safeParse({ mrp: 50, price: 75 });
+  assert.equal(result.success, false);
 });
