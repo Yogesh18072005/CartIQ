@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Address from "../models/Address.js";
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
+import Store from "../models/Store.js";
 import { getAuthenticatedUserId } from "../middleware/auth.js";
 
 export async function createOrder(req, res) {
@@ -82,7 +83,7 @@ export async function listMyOrders(req, res) {
 }
 
 export async function listStoreOrders(req, res) {
-  const store = await (await import("../models/Store.js")).default.findOne({
+  const store = await Store.findOne({
     ownerId: getAuthenticatedUserId(req),
     status: "approved",
     isActive: true
@@ -99,7 +100,7 @@ export async function listStoreOrders(req, res) {
 }
 
 export async function updateStoreOrderStatus(req, res) {
-  const store = await (await import("../models/Store.js")).default.findOne({
+  const store = await Store.findOne({
     ownerId: getAuthenticatedUserId(req),
     status: "approved",
     isActive: true
