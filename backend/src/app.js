@@ -13,7 +13,9 @@ const app = express();
 
 app.disable("x-powered-by");
 // Clerk must run before other middleware so it can attach auth state to requests.
-if (env.CLERK_SECRET_KEY) app.use(clerkMiddleware());
+if (env.CLERK_PUBLISHABLE_KEY && env.CLERK_SECRET_KEY) {
+  app.use(clerkMiddleware());
+}
 
 app.use(helmet());
 app.use(cors({
