@@ -26,6 +26,10 @@ function validateProductId(req, res, next) {
 }
 
 router.get("/", asyncHandler(listProducts));
+router.get("/mine", requireUser, asyncHandler(async (req, res) => {
+  const { listMyProducts } = await import("../controllers/productController.js");
+  return listMyProducts(req, res);
+}));
 router.get("/:id", validateProductId, asyncHandler(getProduct));
 router.post("/", requireUser, validateBody(productSchema), asyncHandler(createProduct));
 router.patch("/:id", requireUser, validateProductId, validateBody(productUpdateSchema), asyncHandler(updateProduct));
