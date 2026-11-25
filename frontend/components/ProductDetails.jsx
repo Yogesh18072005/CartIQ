@@ -5,6 +5,7 @@ import { StarIcon, TagIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
+import Counter from "./Counter";
 import { useDispatch, useSelector } from "react-redux";
 import { assets } from "@/assets/assets";
 
@@ -54,7 +55,12 @@ const ProductDetails = ({ product }) => {
                 </div>
                 {discount > 0 && <div className="flex items-center gap-2 text-slate-500"><TagIcon size={14} /><p>Save {discount.toFixed(0)}% right now</p></div>}
                 <div className="flex items-end gap-5 mt-10">
-                    {cart[productId] && <div className="flex flex-col gap-3"><p className="text-lg text-slate-800 font-semibold">Quantity</p><p>{cart[productId]}</p></div>}
+                    {cart[productId] && (
+                        <div className="flex flex-col gap-3">
+                            <p className="text-lg text-slate-800 font-semibold">Quantity</p>
+                            <Counter productId={productId} />
+                        </div>
+                    )}
                     <button onClick={() => !cart[productId] ? addToCartHandler() : router.push('/cart')} className="bg-slate-800 text-white px-10 py-3 text-sm font-medium rounded hover:bg-slate-900 active:scale-95 transition">
                         {!cart[productId] ? 'Add to Cart' : 'View Cart'}
                     </button>
