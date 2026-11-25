@@ -1,7 +1,7 @@
 import { getAuth } from "@clerk/express";
 
 export function requireUser(req, res, next) {
-  if (!process.env.CLERK_SECRET_KEY) {
+  if (!process.env.CLERK_SECRET_KEY || !process.env.CLERK_PUBLISHABLE_KEY) {
     return res.status(503).json({
       success: false,
       message: "Authentication is not configured on this server."
