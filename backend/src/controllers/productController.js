@@ -38,6 +38,17 @@ export async function getProduct(req, res) {
   res.json({ success: true, data: product });
 }
 
+export async function listMyProducts(req, res) {
+  const userId = getAuthenticatedUserId(req);
+  const store = await Store.findOne({ ownerId: userId });
+  if (!store) return res.status(404).json({ success: false, message: "Store application not found." });
+
+  const products = await Product.find({ store: store._id })
+    .sort({ createdAt: -1 })
+    .lean();
+  res.json({ success: true, data: products });
+}
+
 async function getApprovedOwnerStore(userId) {
   return Store.findOne({ ownerId: userId, status: "approved", isActive: true });
 }
