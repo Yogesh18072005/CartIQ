@@ -7,7 +7,12 @@ export function notFound(req, res, next) {
 export function errorHandler(error, req, res, next) {
   if (res.headersSent) return next(error);
 
-  const status = error.status || (error.name === "ValidationError" ? 400 : 500);
+  if (error.code === 11000) {
+    return res.status(409).json({ success: false, message: "A record with this value already exists." });
+  }
+
+  const status = error.status ||
+    (error.name === "ValidationError" || error.name === "CastError" ? 400 : 500);
   if (status >= 500) console.error(error);
 
   res.status(status).json({
