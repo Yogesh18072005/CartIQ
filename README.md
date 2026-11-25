@@ -1,46 +1,87 @@
 # CartIQ
 
-CartIQ is an e-commerce application prototype focused on product discovery, shopping-cart interactions, multi-vendor storefront concepts, and camera-assisted item recognition.
+CartIQ is a multi-vendor e-commerce application prototype with product discovery, shopping-cart interactions, seller storefronts, and camera-assisted item recognition.
 
-> **Project status:** The repository contains a Next.js application and a browser-based object-detection component. Some seller, admin, and order screens currently use demo data or placeholder handlers. This README distinguishes implemented UI/prototype functionality from backend workflows that still require implementation and verification.
-
-## Current technology
+## Technology stack
 
 - **Frontend:** Next.js 15, React 19, Tailwind CSS 4
-- **Authentication UI/integration:** Clerk
+- **Backend:** Node.js, Express 5 REST API
+- **Database:** MongoDB with Mongoose
+- **Authentication:** Clerk
 - **Client state:** Redux Toolkit
-- **Charts and UI:** Recharts, Lucide React, React Hot Toast
+- **Validation and security:** Zod, Helmet, CORS allow-listing, rate limiting
 - **Camera-based recognition:** TensorFlow.js, COCO-SSD, React Webcam
-- **Data-model draft:** Prisma schema for PostgreSQL (database integration must be completed and verified)
 
-This repository is **not currently a conventional MERN stack application**: the checked-in frontend uses Next.js and a PostgreSQL-oriented Prisma schema, and no Express/MongoDB backend is present in the current tree.
+The repository is being migrated from its original PostgreSQL/Prisma starter structure to a MERN architecture. The active commerce API uses MongoDB/Mongoose. The old Prisma schema is retained temporarily as a migration reference and is not used by the new Express API.
 
-## Features present in the codebase
+## Current implementation
 
-- Customer storefront pages and product browsing UI
-- Redux-based cart state and quantity controls
-- Product detail, category, and shop page structure
-- Seller and admin dashboard interfaces
-- Store, product, order, address, coupon, and rating data models drafted in Prisma
+- Customer storefront and product browsing UI
+- Redux cart state and quantity controls
+- MongoDB-backed product listing and product detail API
+- Clerk-protected store application submission
+- Public approved-store storefront API
+- Product create, update, and delete API restricted to the owner's approved store
+- Admin-only store approval endpoint guarded by a Clerk user ID allow-list
+- Optional local demo-data seed command
 - Browser camera component using COCO-SSD object detection
-- Product, cart, address, and rating Redux slices
+- Backend request validation and API security middleware
+- GitHub Actions backend validation tests
+
+**Still in progress:** order persistence and checkout, payment integration, address and coupon APIs, full seller/admin dashboard data integration, image upload/storage, and end-to-end verification. Do not describe these as production-ready features until implemented and tested.
 
 ## Repository layout
 
 ```text
 CartIQ/
+├── backend/
+│   ├── src/
+│   │   ├── config/       # Environment and MongoDB connection
+│   │   ├── controllers/  # API request handlers
+│   │   ├── middleware/   # Authentication, authorization and errors
+│   │   ├── models/       # Mongoose models
+│   │   ├── routes/       # Express REST routes
+│   │   ├── scripts/      # Explicit local demo seed
+│   │   └── validators/   # Zod request schemas
+│   └── tests/
 ├── frontend/
-│   ├── app/             # Next.js routes and layouts
-│   ├── components/      # Storefront, seller, admin and camera UI
-│   ├── lib/             # Redux store and feature slices
-│   ├── prisma/          # PostgreSQL data-model draft
-│   └── utils/           # Prediction rendering helpers
-└── object_detection/    # Separate Next.js starter workspace; review before use
+│   ├── app/              # Next.js routes and layouts
+│   ├── components/       # Storefront, seller, admin and camera UI
+│   └── lib/              # Redux store and feature slices
+└── object_detection/     # Separate experimental Next.js workspace
 ```
 
-## Run the main frontend
+## Run locally
 
-Requirements: Node.js 20.9+ and npm.
+Use two terminals.
+
+### 1. Start MongoDB
+
+Use a local MongoDB service or a MongoDB Atlas database. Keep the connection string private.
+
+### 2. Start the backend
+
+```powershell
+cd backend
+npm install
+Copy-Item .env.example .env
+```
+
+Set `MONGODB_URI`, `FRONTEND_URL`, and both Clerk keys in `backend/.env`. To use the admin approval endpoint, add your own Clerk user ID to `ADMIN_CLERK_USER_IDS`. Never commit this file or share credentials.
+
+```powershell
+npm run dev
+```
+
+Optional local demonstration data:
+
+```powershell
+npm run seed:demo
+```
+
+### 3. Start the frontend
+
+In a second terminal:
 
 ```powershell
 cd frontend
@@ -49,33 +90,18 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Set the Clerk frontend publishable key and the backend API URL in `frontend/.env.local`. Open [http://localhost:3000](http://localhost:3000).
 
-The current `.env.example` only documents the public currency symbol. Clerk configuration and database credentials are not included; add valid values locally only after the corresponding integrations are configured. Never commit `.env.local` or production secrets.
+## Tests
 
-## Important implementation notes
+From `backend/`:
 
-Before treating this as a production-ready commerce platform, the following work remains:
+```powershell
+npm test
+```
 
-- Connect storefront, seller, and admin screens to persistent server-side data instead of demo fixtures.
-- Implement and verify store application submission and approval.
-- Implement secure product, order, address, coupon, and rating operations with server-side authorization.
-- Complete Prisma client setup, migrations, and database connection.
-- Implement and test checkout/payment handling before describing purchases as supported.
-- Add tests for core cart and commerce workflows.
-- Verify camera permissions, model loading, detection behavior, and cleanup on supported browsers.
-- Replace placeholder pages and remove unrelated demo code before deployment.
+The GitHub Actions workflow runs the backend validation tests on relevant pushes and pull requests. A passing validation workflow does not replace live MongoDB, Clerk, browser, or checkout testing.
 
 ## Attribution
 
-The frontend README in this repository references the [GreatStackDev GoCart project](https://github.com/GreatStackDev/goCart). Preserve the original project's license and attribution notices when using or modifying its code. Clearly describe your own changes and contributions when presenting this project.
-
-## Development checks
-
-From `frontend/`:
-
-```powershell
-npm run build
-```
-
-The build command checks the Next.js production build. It does not prove that authentication, database operations, checkout, or camera workflows work end-to-end.
+The original frontend README references the [GreatStackDev GoCart project](https://github.com/GreatStackDev/goCart). Preserve its license and attribution notices when using or modifying that code. Clearly describe your own contributions when presenting CartIQ.
