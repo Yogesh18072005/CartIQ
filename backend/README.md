@@ -41,22 +41,27 @@ The seed command creates or updates one demo store and six demo products. It doe
 | GET | /api/health | Public | API and database health |
 | GET | /api/products | Public | Search and paginate approved-store products |
 | GET | /api/products/:id | Public | Product details |
+| GET | /api/products/mine | Clerk user | List own store products |
 | POST | /api/products | Clerk user + approved store | Create product |
 | PATCH | /api/products/:id | Clerk user + owning approved store | Update product |
 | DELETE | /api/products/:id | Clerk user + owning approved store | Delete product |
 | GET | /api/stores/:username | Public | Approved storefront and products |
 | GET | /api/stores/me | Clerk user | Read own store application |
 | POST | /api/stores | Clerk user | Submit a store application |
+| GET | /api/admin/stores | Allow-listed admin | List store applications |
 | PATCH | /api/admin/stores/:storeId/status | Allow-listed admin | Approve or reject a store |
+| PATCH | /api/admin/stores/:storeId/active | Allow-listed admin | Activate or deactivate an approved store |
 | GET | /api/addresses | Clerk user | List own saved addresses |
 | POST | /api/addresses | Clerk user | Save a delivery address |
 | DELETE | /api/addresses/:id | Clerk user | Delete own address |
 | GET | /api/orders | Clerk user | List own orders |
 | POST | /api/orders | Clerk user | Place a COD order using server-side product prices |
+| GET | /api/orders/store | Approved seller | List orders containing the seller's products |
+| PATCH | /api/orders/store/:orderId/status | Approved seller | Update own items' fulfillment status |
 
 Product list query parameters: `search`, `category`, `page`, and `limit` (maximum 50).
 
-Set `ADMIN_CLERK_USER_IDS` to a comma-separated list of trusted Clerk user IDs to enable the store approval endpoint. No public admin-approval route exists.
+Set `ADMIN_CLERK_USER_IDS` to a comma-separated list of trusted Clerk user IDs to enable admin routes. No public admin route exists.
 
 ## Important scope
 
