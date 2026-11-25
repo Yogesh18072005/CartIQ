@@ -7,6 +7,7 @@ import { env } from "./config/env.js";
 import healthRoutes from "./routes/healthRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import storeRoutes from "./routes/storeRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
@@ -30,6 +31,7 @@ app.get("/", (req, res) => res.json({ success: true, name: "CartIQ API", health:
 app.use("/api/health", healthRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/stores", storeRoutes);
+app.use("/api/admin", adminRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
