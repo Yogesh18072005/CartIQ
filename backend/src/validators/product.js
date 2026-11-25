@@ -8,7 +8,7 @@ export const productSchema = z.object({
   images: z.array(z.url()).max(8).default([]),
   category: z.string().trim().min(2).max(80),
   inStock: z.boolean().default(true)
-}).refine((data) => data.price <= data.mrp, {
+}).refine((data) => data.price === undefined || data.mrp === undefined || data.price <= data.mrp, {
   message: "Price cannot be greater than MRP",
   path: ["price"]
 });
