@@ -26,7 +26,7 @@ export async function createOrder(req, res) {
 
   const productIds = [...quantities.keys()];
   const products = await Product.find({ _id: { $in: productIds }, inStock: true })
-    .populate("store", "name username")
+    .populate("store", "name username status isActive")
     .lean();
 
   if (products.length !== productIds.length) {
@@ -39,18 +39,17 @@ export async function createOrder(req, res) {
 
   for (const [productId, quantity] of quantities) {
     const product = productById.get(productId);
-    if (!product.store?._id) {
-      return res.status(409).json({ success: false, message: "A product is not linked to an active store." });
+    if (!product.store?._id || product.store.status !== "approved" || !product.store.isActive) {
+      return res.status(409).json({ success: false, message: "A product is not linked to an active approved store." });
     }
-    const unitPrice = product.price;
-    total += unitPrice * quantity;
+    total += product.price * quantity;
     items.push({
       product: product._id,
       store: product.store._id,
       name: product.name,
       image: product.images?.[0] || "",
       quantity,
-      unitPrice
+      unitPrice: product.price
     });
   }
 
