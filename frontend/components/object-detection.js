@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { load as loadCocoSSD } from "@tensorflow-models/coco-ssd";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { renderPredictions } from "@/utils/render-prediction";
 
 export default function ObjectDetection() {
@@ -13,6 +13,7 @@ export default function ObjectDetection() {
   const canvasRef = useRef(null);
   const detectionInProgress = useRef(false);
   const dispatch = useDispatch();
+  const products = useSelector(state => state.product.list);
 
   useEffect(() => {
     let isActive = true;
@@ -22,7 +23,6 @@ export default function ObjectDetection() {
     async function startDetection() {
       try {
         model = await loadCocoSSD();
-
         if (!isActive) return;
         setIsLoading(false);
 
@@ -30,31 +30,19 @@ export default function ObjectDetection() {
           const video = webcamRef.current?.video;
           const canvas = canvasRef.current;
 
-          if (
-            !isActive ||
-            detectionInProgress.current ||
-            !video ||
-            video.readyState !== 4 ||
-            !canvas
-          ) {
-            return;
-          }
+          if (!isActive || detectionInProgress.current || !video || video.readyState !== 4 || !canvas) return;
 
           detectionInProgress.current = true;
-
           try {
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-
             const predictions = await model.detect(video, undefined, 0.6);
             if (isActive) {
               const context = canvas.getContext("2d");
-              if (context) renderPredictions(predictions, context, dispatch);
+              if (context) renderPredictions(predictions, context, dispatch, products);
             }
           } catch {
-            if (isActive) {
-              setError("Item detection stopped unexpectedly. Please refresh and try again.");
-            }
+            if (isActive) setError("Item detection stopped unexpectedly. Please refresh and try again.");
           } finally {
             detectionInProgress.current = false;
           }
@@ -68,27 +56,18 @@ export default function ObjectDetection() {
     }
 
     startDetection();
-
     return () => {
       isActive = false;
       if (intervalId) window.clearInterval(intervalId);
     };
-  }, [dispatch]);
+  }, [dispatch, products]);
 
-  if (error) {
-    return (
-      <div role="alert" className="p-4 text-center text-sm text-red-700">
-        {error}
-      </div>
-    );
-  }
+  if (error) return <div role="alert" className="p-4 text-center text-sm text-red-700">{error}</div>;
 
   return (
     <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-gray-200">
       {isLoading ? (
-        <p className="text-center text-sm font-medium text-slate-700">
-          Loading item-recognition model…
-        </p>
+        <p className="text-center text-sm font-medium text-slate-700">Loading item-recognition model…</p>
       ) : (
         <>
           <Webcam
@@ -99,11 +78,7 @@ export default function ObjectDetection() {
             videoConstraints={{ facingMode: { ideal: "environment" } }}
             onUserMediaError={() => setError("Camera access is unavailable. Allow camera permission in your browser and refresh.")}
           />
-          <canvas
-            ref={canvasRef}
-            aria-label="Live item detection results"
-            className="pointer-events-none absolute inset-0 h-full w-full"
-          />
+          <canvas ref={canvasRef} aria-label="Live item detection results" className="pointer-events-none absolute inset-0 h-full w-full" />
         </>
       )}
     </div>
