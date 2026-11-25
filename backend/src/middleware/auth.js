@@ -1,24 +1,27 @@
-import { requireAuth } from "@clerk/express";
+import { getAuth } from "@clerk/express";
 
-export const requireUser = [
-  (req, res, next) => {
-    if (!process.env.CLERK_SECRET_KEY) {
-      return res.status(503).json({
-        success: false,
-        message: "Authentication is not configured on this server."
-      });
-    }
-    next();
-  },
-  requireAuth()
-];
+export function requireUser(req, res, next) {
+  if (!process.env.CLERK_SECRET_KEY) {
+    return res.status(503).json({
+      success: false,
+      message: "Authentication is not configured on this server."
+    });
+  }
+
+  const auth = getAuth(req);
+  if (!auth.isAuthenticated || !auth.userId) {
+    return res.status(401).json({ success: false, message: "Authentication required." });
+  }
+
+  req.userId = auth.userId;
+  next();
+}
 
 export function getAuthenticatedUserId(req) {
-  const userId = req.auth?.userId;
-  if (!userId) {
+  if (!req.userId) {
     const error = new Error("Authentication required");
     error.status = 401;
     throw error;
   }
-  return userId;
+  return req.userId;
 }
