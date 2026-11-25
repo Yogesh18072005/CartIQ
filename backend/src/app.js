@@ -12,6 +12,9 @@ import { notFound, errorHandler } from "./middleware/errorHandler.js";
 const app = express();
 
 app.disable("x-powered-by");
+// Clerk must run before other middleware so it can attach auth state to requests.
+if (env.CLERK_SECRET_KEY) app.use(clerkMiddleware());
+
 app.use(helmet());
 app.use(cors({
   origin: env.FRONTEND_URL,
@@ -21,9 +24,7 @@ app.use(cors({
 app.use(express.json({ limit: "1mb" }));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: "draft-7", legacyHeaders: false }));
 
-if (env.CLERK_SECRET_KEY) app.use(clerkMiddleware());
-
-app.get("/", (req, res) => res.json({ success: true, name: "CartIQ API", docs: "/api/health" }));
+app.get("/", (req, res) => res.json({ success: true, name: "CartIQ API", health: "/api/health" }));
 app.use("/api/health", healthRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/stores", storeRoutes);
