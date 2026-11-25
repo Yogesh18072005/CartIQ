@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireUser } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
-import { createStore, getMyStore } from "../controllers/storeController.js";
+import { createStore, getMyStore, getStoreByUsername } from "../controllers/storeController.js";
 import { createStoreSchema } from "../validators/store.js";
 
 const router = Router();
@@ -17,8 +17,8 @@ function validateBody(schema) {
   };
 }
 
-router.use(requireUser);
-router.get("/me", asyncHandler(getMyStore));
-router.post("/", validateBody(createStoreSchema), asyncHandler(createStore));
+router.get("/me", requireUser, asyncHandler(getMyStore));
+router.get("/:username", asyncHandler(getStoreByUsername));
+router.post("/", requireUser, validateBody(createStoreSchema), asyncHandler(createStore));
 
 export default router;
