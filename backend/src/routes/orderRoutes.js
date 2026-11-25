@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireUser } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
-import { createOrder, listMyOrders } from "../controllers/orderController.js";
+import { createOrder, listMyOrders, listStoreOrders, updateStoreOrderStatus } from "../controllers/orderController.js";
 import { createOrderSchema } from "../validators/order.js";
 
 const router = Router();
@@ -16,6 +16,8 @@ function validateBody(req, res, next) {
 }
 
 router.use(requireUser);
+router.get("/store", asyncHandler(listStoreOrders));
+router.patch("/store/:orderId/status", asyncHandler(updateStoreOrderStatus));
 router.get("/", asyncHandler(listMyOrders));
 router.post("/", validateBody, asyncHandler(createOrder));
 
