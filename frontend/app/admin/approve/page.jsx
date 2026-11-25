@@ -1,59 +1,77 @@
 'use client'
-import { storesDummyData } from "@/assets/assets"
+import { useAuth } from "@clerk/nextjs"
 import StoreInfo from "@/components/admin/StoreInfo"
 import Loading from "@/components/Loading"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
 
 export default function AdminApprove() {
-
+    const { getToken, isLoaded, isSignedIn } = useAuth()
     const [stores, setStores] = useState([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState("")
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
-
-    const fetchStores = async () => {
-        setStores(storesDummyData)
-        setLoading(false)
-    }
-
-    const handleApprove = async ({ storeId, status }) => {
-        // Logic to approve a store
-
-
-    }
+    const fetchStores = useCallback(async signal => {
+        const token = await getToken()
+        const response = await fetch(`${apiBaseUrl}/api/admin/stores?status=pending`, {
+            signal,
+            headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.message || "Unable to load pending stores.")
+        setStores(result.data || [])
+    }, [apiBaseUrl, getToken])
 
     useEffect(() => {
-            fetchStores()
-    }, [])
+        if (!isLoaded) return
+        if (!isSignedIn) {
+            setLoading(false)
+            return
+        }
+        const controller = new AbortController()
+        fetchStores(controller.signal)
+            .catch(loadError => { if (loadError.name !== "AbortError") setError(loadError.message) })
+            .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+        return () => controller.abort()
+    }, [isLoaded, isSignedIn, fetchStores])
 
-    return !loading ? (
-        <div className="text-slate-500 mb-28">
-            <h1 className="text-2xl">Approve <span className="text-slate-800 font-medium">Stores</span></h1>
+    const handleApprove = async (storeId, status) => {
+        const token = await getToken()
+        const response = await fetch(`${apiBaseUrl}/api/admin/stores/${storeId}/status`, {
+            method: "PATCH",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                Accept: "application/json"
+            },
+            body: JSON.stringify({ status })
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.message || "Store review failed.")
+        setStores(current => current.filter(store => store._id !== storeId))
+        toast.success(`Store ${status}.`)
+    }
 
-            {stores.length ? (
-                <div className="flex flex-col gap-4 mt-4">
-                    {stores.map((store) => (
-                        <div key={store.id} className="bg-white border rounded-lg shadow-sm p-6 flex max-md:flex-col gap-4 md:items-end max-w-4xl" >
-                            {/* Store Info */}
-                            <StoreInfo store={store} />
+    if (!isLoaded || loading) return <Loading />
 
-                            {/* Actions */}
-                            <div className="flex gap-3 pt-2 flex-wrap">
-                                <button onClick={() => toast.promise(handleApprove({ storeId: store.id, status: 'approved' }), { loading: "approving" })} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm" >
-                                    Approve
-                                </button>
-                                <button onClick={() => toast.promise(handleApprove({ storeId: store.id, status: 'rejected' }), { loading: 'rejecting' })} className="px-4 py-2 bg-slate-500 text-white rounded hover:bg-slate-600 text-sm" >
-                                    Reject
-                                </button>
-                            </div>
+    return (
+        <div className="mb-28 text-slate-500">
+            <h1 className="text-2xl">Review <span className="font-medium text-slate-800">Store Applications</span></h1>
+            {!isSignedIn && <p className="mt-4">Sign in with an administrator account.</p>}
+            {error && <p role="alert" className="mt-4 rounded bg-red-50 p-3 text-red-700">{error}</p>}
+            {isSignedIn && !error && stores.length === 0 && <p className="mt-8">No applications pending review.</p>}
+            <div className="mt-4 flex max-w-4xl flex-col gap-4">
+                {stores.map(store => (
+                    <div key={store._id} className="flex max-w-4xl flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 md:flex-row md:items-end">
+                        <StoreInfo store={store} />
+                        <div className="flex flex-wrap gap-3">
+                            <button onClick={() => toast.promise(handleApprove(store._id, "approved"), { loading: "Approving…" })} className="rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700">Approve</button>
+                            <button onClick={() => toast.promise(handleApprove(store._id, "rejected"), { loading: "Rejecting…" })} className="rounded bg-slate-600 px-4 py-2 text-sm text-white hover:bg-slate-700">Reject</button>
                         </div>
-                    ))}
-
-                </div>) : (
-                <div className="flex items-center justify-center h-80">
-                    <h1 className="text-3xl text-slate-400 font-medium">No Application Pending</h1>
-                </div>
-            )}
+                    </div>
+                ))}
+            </div>
         </div>
-    ) : <Loading />
+    )
 }
