@@ -8,12 +8,13 @@ import healthRoutes from "./routes/healthRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import storeRoutes from "./routes/storeRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import addressRoutes from "./routes/addressRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
 
 app.disable("x-powered-by");
-// Clerk must run before other middleware so it can attach auth state to requests.
 if (env.CLERK_PUBLISHABLE_KEY && env.CLERK_SECRET_KEY) {
   app.use(clerkMiddleware());
 }
@@ -32,6 +33,8 @@ app.use("/api/health", healthRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/addresses", addressRoutes);
+app.use("/api/orders", orderRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
